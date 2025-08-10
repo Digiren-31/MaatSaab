@@ -1,0 +1,104 @@
+# Apple's Design Language Reference for Beautiful Applications
+
+This document is meant to be used as a **prompt file** for Large Language Models (LLMs)** when guiding application design to follow Apple's design principles across macOS, iOS, iPadOS, and visionOS.
+
+---
+
+## 1. Apple's Design Philosophy
+Apple's design language is defined by **clarity, depth, and deference**:
+- **Clarity** – Text is legible, icons are precise, and visual hierarchy is clear.
+- **Deference** – UI elements help users understand and interact with content without competing with it.
+- **Depth** – Subtle layering, motion, and transitions create a sense of hierarchy and spatial awareness.
+
+---
+
+## 2. Core Principles
+1. **Focus on Content**  
+   - UI chrome should be minimal. Let the content be the hero.
+   - Use translucent materials (e.g., macOS "vibrancy" effects) to integrate UI and content seamlessly.
+
+2. **Consistency**  
+   - Follow Apple's Human Interface Guidelines (HIG).
+   - Use standard controls, gestures, and iconography where possible.
+
+3. **Feedback and Affordance**  
+   - Provide clear feedback for user actions (animations, sounds, haptics).
+   - Controls should visually indicate interactivity.
+
+4. **Aesthetic Integrity**  
+   - Design should reflect the purpose of the app (playful for games, serious for productivity).
+   - Maintain balance between beauty and usability.
+
+5. **Simplicity**  
+   - Avoid unnecessary complexity.
+   - Use progressive disclosure to reveal complexity only when needed.
+
+---
+
+## 3. Visual Design Elements
+
+### Color
+- Use **system colors** to support dark/light mode automatically.
+- Keep the palette **restrained**—avoid bright, clashing colors unless for calls-to-action.
+- Use accent colors sparingly to highlight important elements.
+
+### Typography
+- Use the **San Francisco** font family (SF Pro, SF Compact, SF Mono).
+- Maintain appropriate text styles (Title, Headline, Body, Footnote) as per Apple's type scale.
+- Prioritize readability—avoid overly condensed or decorative fonts.
+
+### Iconography
+- Use **SF Symbols** for scalable vector icons.
+- Icons should be simple, recognizable, and consistent with Apple's style.
+
+### Layout & Spacing
+- Employ generous **padding** and whitespace.
+- Use a **grid-based layout** to ensure alignment and balance.
+- Maintain touch targets at least **44x44 points** on touch devices.
+
+### Motion & Animation
+- Keep animations **subtle and purposeful**.
+- Use natural easing curves.
+- Motion should aid understanding, not distract.
+
+---
+
+## 4. Platform-Specific Notes
+
+### macOS
+- Use **vibrancy** and **blurring** for depth.
+- Toolbars should be flexible and context-aware.
+- Prefer sidebar navigation for complex apps.
+
+### iOS / iPadOS
+- Prioritize touch interactions with clear visual states.
+- Use native gestures like swipe-to-delete, pull-to-refresh.
+- Keep the bottom navigation bar simple and uncluttered.
+
+### visionOS
+- Maintain **spatial awareness** in UI.
+- Use depth cues like shadows, parallax, and focus shifts.
+- Avoid clutter in the user's visual field.
+
+---
+
+## 5. Accessibility
+- Support **Dynamic Type**, VoiceOver, and high-contrast modes.
+- Ensure **color contrast** meets WCAG standards.
+- All controls must be reachable via keyboard or assistive devices.
+
+---
+
+## 6. Sample LLM Design Prompt
+```
+You are an expert Apple UI/UX designer. Design my application interface following Apple's Human Interface Guidelines, ensuring clarity, deference, and depth.  
+Use SF Pro fonts, SF Symbols icons, system colors for dark/light mode, and generous spacing.  
+Ensure the design is minimal, accessible, and uses Apple's animation principles.  
+Suggest ways to make the app visually consistent with macOS and iOS native apps.
+```
+---
+
+**Reference:**  
+- [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/)  
+- [SF Symbols](https://developer.apple.com/sf-symbols/)  
+- [Apple Design Resources](https://developer.apple.com/design/resources/)

@@ -1,0 +1,394 @@
+# MaatSaab UI/UX Design Guide
+## Comprehensive Apple-Inspired Design Language & Implementation Details
+
+---
+
+## 🎯 Universal Design Language
+
+### Core Philosophy: Apple's Design Principles
+**Clarity, Deference, and Depth** - The three pillars that guide every design decision in MaatSaab.
+
+#### 1. **Clarity**
+- **Typography**: Crystal clear text hierarchy using system font stack
+- **Visual Hierarchy**: Clear distinction between primary, secondary, and tertiary elements
+- **Iconography**: Precise, recognizable icons from Lucide (open-source alternative to SF Symbols)
+- **Content Focus**: UI chrome is minimal to let content be the hero
+
+#### 2. **Deference**
+- **Translucent Materials**: Glass-morphism effects using backdrop-filter for depth without distraction
+- **Restrained Palette**: System colors that automatically support light/dark mode
+- **Progressive Disclosure**: Complexity revealed only when needed
+- **Content-First**: UI elements help users understand content without competing
+
+#### 3. **Depth**
+- **Layering**: Subtle visual layers using shadows, blur, and translucency
+- **Motion**: Natural easing curves that aid understanding
+- **Spatial Awareness**: Clear hierarchy through elevation and depth cues
+- **Glass Surfaces**: backdrop-filter effects create floating, integrated UI elements
+
+---
+
+## 🎨 Design Token System
+
+### Color Philosophy
+```css
+/* Semantic Color Tokens - Automatically adapt to light/dark mode */
+:root {
+  --bg: 248 248 250;          /* Background canvas */
+  --surface: 255 255 255;     /* Cards, panels, elevated surfaces */
+  --label: 17 17 17;          /* Primary text */
+  --label-sec: 90 90 92;      /* Secondary text */
+  --separator: 0 0 0 / 0.08;  /* Borders, dividers */
+  --fill: 118 118 128 / 0.12; /* Input backgrounds, subtle fills */
+  --accent: 0 122 255;        /* CTA buttons, links, highlights */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: 20 20 22;           /* Deep dark background */
+    --surface: 28 28 30;      /* Elevated dark surfaces */
+    --label: 242 242 247;     /* High contrast text */
+    --label-sec: 198 198 200; /* Muted text */
+    --separator: 255 255 255 / 0.12; /* Subtle borders */
+    --fill: 235 235 245 / 0.16;      /* Dark fills */
+    --accent: 10 132 255;     /* Brighter accent for dark mode */
+  }
+}
+```
+
+### Typography System
+```css
+/* Apple-inspired Font Stack */
+--font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 
+             "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, 
+             "Cascadia Mono", "Segoe UI Mono", Consolas, "Liberation Mono", monospace;
+```
+
+**Typography Hierarchy:**
+- **Title**: 18px, semibold - Major headings (emptyTitle)
+- **Headline**: 16px, medium - Section headers, button labels
+- **Body**: 14px, regular - Main content, chat bubbles
+- **Caption**: 12px, regular - Metadata, timestamps (smallLabel, metaRow)
+
+### Spacing & Layout System
+```css
+/* 8px Grid System */
+--radius: 12px;    /* Standard border radius */
+--blur: 20px;      /* Backdrop blur intensity */
+--duration: 180ms; /* Animation duration */
+--easing: cubic-bezier(.22,.61,.36,1); /* Natural easing curve */
+
+/* Touch Targets: Minimum 44x44px for accessibility */
+.button { min-height: 44px; }
+.input { min-height: 44px; }
+```
+
+### Elevation & Shadows
+```css
+/* Light Mode Shadow */
+--shadow: 0 8px 20px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.06);
+
+/* Dark Mode Shadow - More prominent for depth */
+--shadow: 0 10px 24px rgba(0,0,0,0.45), 0 2px 10px rgba(0,0,0,0.35);
+```
+
+---
+
+## 📁 File-by-File Design Implementation
+
+### 🎨 **src/styles/global.css**
+**Purpose**: Central design system implementation
+**Contains**:
+- **Design Tokens**: All color, spacing, typography variables
+- **Component Base Styles**: Buttons, inputs, surfaces, bubbles
+- **Responsive Breakpoints**: Mobile-first approach
+- **Accessibility Features**: Focus rings, reduced motion support
+- **Glass Morphism Effects**: Backdrop filters for depth
+
+**Key Design Features:**
+```css
+/* Glass Surface Effect */
+.surface {
+  background: color-mix(in oklab, rgb(var(--surface)) 70%, transparent);
+  backdrop-filter: saturate(180%) blur(var(--blur));
+  border: 1px solid rgba(var(--separator));
+  box-shadow: var(--shadow);
+}
+
+/* Interactive Button States */
+.button:active { transform: translateY(1px); } /* Subtle press feedback */
+
+/* Accessibility: Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) { 
+  * { transition: none !important; animation: none !important; } 
+}
+```
+
+**Design Principles Applied:**
+- **Clarity**: Clear visual hierarchy through typography scale
+- **Deference**: Translucent surfaces don't compete with content
+- **Depth**: Multiple shadow layers and backdrop blur create spatial awareness
+
+---
+
+### 🏗️ **src/views/App.tsx**
+**Purpose**: Main application layout and chat interface
+**Design Structure**:
+```tsx
+<div className="app">          {/* CSS Grid Layout */}
+  <aside className="sidebar">  {/* 280px on desktop, hidden on mobile */}
+    <div className="surface headerBar">     {/* Glass header */}
+    <div className="surface section">      {/* Conversation list */}
+  </aside>
+  <main className="chat">      {/* Main chat area */}
+    <div className="messages">             {/* Scrollable message list */}
+    <div className="composer surface">    {/* Input area */}
+  </main>
+</div>
+```
+
+**Layout Behavior:**
+- **Desktop**: Two-column grid (280px sidebar + flexible content)
+- **Mobile**: Single column, sidebar transforms to modal/drawer
+- **Responsive Breakpoint**: 900px
+
+**Apple Design Principles:**
+- **Focus on Content**: Sidebar collapses on mobile to prioritize chat
+- **Consistent Spacing**: 12px padding throughout for visual rhythm
+- **Touch Targets**: All interactive elements meet 44px minimum
+- **Progressive Disclosure**: Settings and advanced features in secondary areas
+
+**Accessibility Features:**
+```tsx
+<div role="log" aria-live="polite" aria-relevant="additions text">
+  {/* Messages container with screen reader support */}
+</div>
+<textarea aria-label="Message input" />
+<button aria-label="New conversation" title="New conversation">
+```
+
+---
+
+### 🧩 **src/components/TypingIndicator.tsx**
+**Purpose**: Animated typing indicator for AI responses
+**Design Implementation**:
+```tsx
+<div aria-label="Assistant typing" className="bubble assistant surface">
+  <span className="dot"/> <span className="dot"/> <span className="dot"/>
+</div>
+```
+
+**Animation Design:**
+```css
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.2; }  /* Subtle, non-distracting */
+  40% { opacity: 0.8; }
+}
+.dot { 
+  animation: blink 1s infinite;     /* Natural timing */
+  animation-delay: 0.2s increments; /* Staggered effect */
+}
+```
+
+**Apple Principles Applied:**
+- **Subtle Motion**: Animation is purposeful, not decorative
+- **Reduced Motion Support**: Respects system accessibility preferences
+- **Visual Hierarchy**: Indicator is clearly secondary to content
+
+---
+
+### 📄 **index.html**
+**Purpose**: HTML foundation and meta configuration
+**Design Considerations**:
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!-- Responsive design foundation -->
+
+<meta http-equiv="Content-Security-Policy" content="..." />
+<!-- Security while allowing design assets -->
+
+<link rel="icon" href="/favicon.svg" />
+<!-- Vector icon for all device resolutions -->
+
+<title>MaatSaab — Chat</title>
+<!-- Clear, descriptive title with em dash (Apple style) -->
+```
+
+**Apple Design Elements:**
+- **Clean Typography**: Em dash separator in title
+- **Security First**: CSP headers protect user data
+- **Scalable Icons**: SVG favicon works on all resolutions
+- **Semantic HTML**: Proper document structure for accessibility
+
+---
+
+## 🎯 Component Design Patterns
+
+### Chat Bubbles
+```css
+.bubble {
+  padding: 12px 14px;     /* Comfortable reading space */
+  border-radius: 14px;    /* Rounded, friendly appearance */
+  max-width: 72ch;        /* Optimal reading line length */
+  line-height: 1.5;       /* Comfortable reading spacing */
+}
+
+.bubble.user {
+  align-self: flex-end;               /* Right-aligned */
+  background: rgba(var(--accent), 0.12); /* Tinted accent */
+}
+
+.bubble.assistant {
+  align-self: flex-start;             /* Left-aligned */
+  background: rgba(var(--fill));     /* Neutral fill */
+}
+```
+
+### Input Components
+```css
+.input, .textarea {
+  min-height: 44px;              /* Touch target compliance */
+  padding: 10px 12px;            /* Comfortable input spacing */
+  border-radius: 12px;           /* Consistent with surfaces */
+  background: rgba(var(--fill)); /* Subtle background */
+  border: 1px solid rgba(var(--separator)); /* Defined boundaries */
+}
+```
+
+### Interactive States
+```css
+.focus-ring:focus-visible {
+  outline: 2px solid rgb(var(--accent)); /* High contrast focus */
+  outline-offset: 2px;                   /* Breathing room */
+  border-radius: 12px;                   /* Consistent shape */
+}
+
+.button:active {
+  transform: translateY(1px); /* Tactile press feedback */
+}
+```
+
+---
+
+## 🌈 Theme Implementation
+
+### Automatic Theme Switching
+The design system automatically adapts to user's system preference:
+```css
+:root { /* Light mode defaults */ }
+@media (prefers-color-scheme: dark) {
+  :root { /* Dark mode overrides */ }
+}
+```
+
+### Color Contrast Compliance
+- **Light Mode**: Meets WCAG AA standards (4.5:1 contrast ratio)
+- **Dark Mode**: Enhanced contrast for better readability
+- **Accent Colors**: Adjusted brightness for each theme
+
+---
+
+## ♿ Accessibility Design
+
+### Keyboard Navigation
+- **Tab Order**: Logical flow through interface
+- **Enter/Cmd+Enter**: Send message
+- **Escape**: Cancel current operation
+- **Focus Indicators**: High contrast, visible focus rings
+
+### Screen Reader Support
+```tsx
+aria-live="polite"          // Announces new messages
+aria-relevant="additions text" // Specific announcement types
+aria-label="Message input"    // Clear input purpose
+role="log"                    // Chat message container
+```
+
+### Motor Accessibility
+- **44px Touch Targets**: Comfortable for all users
+- **Reduced Motion**: Respects user preferences
+- **Large Click Areas**: Generous padding on interactive elements
+
+---
+
+## 📱 Responsive Design Strategy
+
+### Mobile-First Approach
+```css
+/* Base styles for mobile */
+.app { grid-template-columns: 1fr; }
+
+/* Desktop enhancement */
+@media (min-width: 901px) {
+  .app { grid-template-columns: 280px 1fr; }
+}
+```
+
+### Breakpoint Strategy
+- **Mobile**: 0-900px (single column, touch-optimized)
+- **Desktop**: 901px+ (sidebar + content, cursor-optimized)
+- **No tablet-specific breakpoint**: Fluid design adapts naturally
+
+---
+
+## 🎭 Animation Philosophy
+
+### Natural Motion
+```css
+--easing: cubic-bezier(.22,.61,.36,1); /* Apple's standard easing */
+--duration: 180ms;                     /* Quick but perceptible */
+```
+
+### Animation Principles
+- **Purposeful**: Every animation serves a functional purpose
+- **Subtle**: Motion enhances, never distracts
+- **Respectful**: Honors reduced motion preferences
+- **Consistent**: Same timing and easing throughout
+
+### Micro-Interactions
+- **Button Press**: 1px translateY for tactile feedback
+- **Loading States**: Spinning indicator with natural timing
+- **Typing Indicator**: Staggered dot animation
+- **Focus States**: Immediate outline appearance
+
+---
+
+## 🔧 Implementation Guidelines
+
+### When Making UI Changes
+
+1. **Always Reference Design Tokens**: Use CSS variables, never hard-coded values
+2. **Test Both Themes**: Verify light and dark mode appearance
+3. **Check Accessibility**: Ensure contrast, focus states, and screen reader support
+4. **Validate Responsive**: Test mobile and desktop layouts
+5. **Respect Motion Preferences**: Honor reduced motion settings
+6. **Maintain Consistency**: Follow established patterns and spacing
+
+### Design Decision Framework
+Ask these questions for every UI change:
+- **Clarity**: Does this make the interface clearer?
+- **Deference**: Does this compete with or enhance the content?
+- **Depth**: Does this add meaningful spatial hierarchy?
+- **Accessibility**: Can all users interact with this effectively?
+- **Apple-like**: Would this feel at home on an Apple platform?
+
+---
+
+## 📚 Design References
+
+### Apple Human Interface Guidelines
+- **Typography**: San Francisco font principles (adapted to system fonts)
+- **Color**: Semantic color system
+- **Layout**: Grid-based design with generous spacing
+- **Motion**: Natural, purposeful animations
+
+### Open Source Alternatives
+- **Icons**: Lucide React (replaces SF Symbols)
+- **Fonts**: System font stack (replaces SF Pro)
+- **Components**: Custom-built following Apple patterns
+
+### Inspiration Sources
+- **macOS Monterey/Ventura**: Glass morphism and translucency
+- **iOS 16+**: Dynamic theming and adaptive colors
+- **iPadOS**: Responsive layout patterns

@@ -1,0 +1,157 @@
+# MaatSaab - Web AI Chat App Context Guide
+
+## Project Overview
+MaatSaab is a React + TypeScript + Vite web-based AI chat application with Apple-inspired design language and a minimal Azure Functions backend. It follows Apple's design principles of clarity, deference, and depth using open/free resources.
+
+## Context Categories for Changes
+
+### 🎨 UI/UX Design Changes
+**Files to include when making visual, styling, or design changes:**
+
+#### Core Design Documents
+- `apple_design_prompt.md` - Apple design language reference and principles
+- `coreApplicationPrompt.md` - Detailed application design requirements and specifications
+
+#### Styling & Components
+- `src/styles/global.css` - Design tokens, CSS variables, theming (light/dark mode)
+- `src/views/App.tsx` - Main app layout and chat interface
+- `src/components/TypingIndicator.tsx` - Animated typing indicator component
+- `index.html` - HTML structure and meta tags
+
+#### Design Requirements Context
+When making UI changes, always reference:
+- Apple's design principles: clarity, deference, depth
+- System font stack usage
+- Semantic color tokens for light/dark mode
+- 8px grid spacing system
+- 44x44px minimum touch targets
+- Accessibility requirements (WCAG AA)
+- Subtle animations with reduced-motion support
+
+---
+
+### ⚙️ Configuration & Build Changes
+**Files to include when making build, deployment, or configuration changes:**
+
+#### Build Configuration
+- `package.json` - Dependencies, scripts, project metadata
+- `vite.config.ts` - Vite build configuration, dev server, API proxy
+- `tsconfig.json` - TypeScript configuration
+
+#### API Configuration
+- `api/function.json` - Azure Functions configuration
+- `api/shared/keyvault.ts` - Key Vault configuration for secrets management
+
+#### Environment & Deployment
+When making configuration changes, consider:
+- Local development vs production environments
+- Azure Static Web Apps deployment
+- Environment variables and secrets management
+- API proxy configuration for development
+
+---
+
+### 🔧 Backend & API Changes
+**Files to include when making server-side, API, or backend changes:**
+
+#### API Implementation
+- `api/chat/index.ts` - Main chat API endpoint (currently stubbed)
+- `api/chat/function.json` - Function configuration for chat endpoint
+- `api/shared/keyvault.ts` - Azure Key Vault integration for API keys
+
+#### API Integration
+- `src/lib/api.ts` - Client-side API communication and streaming
+- `src/lib/types.ts` - TypeScript types for API requests/responses
+
+#### Backend Requirements Context
+When making backend changes, consider:
+- Streaming chat responses implementation
+- Azure Functions serverless architecture
+- Security: API keys in Key Vault, no secrets in browser
+- Error handling and abort signal support
+- Integration with AI providers (currently Gemini)
+
+---
+
+### 🧩 Frontend Logic & Features
+**Files to include when making React components, state management, or feature changes:**
+
+#### Core Application
+- `src/main.tsx` - React app entry point
+- `src/views/App.tsx` - Main application component with chat logic
+- `src/components/TypingIndicator.tsx` - UI components
+
+#### Data & Types
+- `src/lib/types.ts` - TypeScript interfaces and types
+- `src/lib/api.ts` - API client functions
+
+#### Feature Requirements Context
+When making frontend changes, consider:
+- React 18 with TypeScript
+- Component state + lightweight context (no heavy state libraries)
+- Streaming chat implementation
+- Message handling and display
+- Keyboard shortcuts (Enter/Cmd+Enter to send, Esc to cancel)
+- Accessibility features
+
+---
+
+### 🔒 Security & Secrets Management
+**Files to include when making security-related changes:**
+
+#### Security Implementation
+- `api/shared/keyvault.ts` - Azure Key Vault integration
+- `vite.config.ts` - Environment variable handling
+- `api/chat/index.ts` - API key usage (should be from Key Vault)
+
+#### Security Context
+When making security changes, ensure:
+- API keys never reach the browser
+- Secrets stored only in Azure Key Vault
+- Managed Identity for Key Vault access
+- No sensitive data in client-side storage
+- Proper error handling without exposing internals
+
+---
+
+### 📱 Accessibility & Performance
+**Files to include when making accessibility or performance improvements:**
+
+#### Accessibility Implementation
+- `src/styles/global.css` - Accessibility CSS (focus rings, contrast, reduced motion)
+- `src/views/App.tsx` - ARIA labels, keyboard navigation
+- `src/components/TypingIndicator.tsx` - Screen reader support
+
+#### Performance Considerations
+- `vite.config.ts` - Build optimization
+- `src/lib/api.ts` - Streaming implementation for responsive UI
+- `src/styles/global.css` - CSS performance and rendering
+
+---
+
+## Common Change Scenarios
+
+### Adding a new chat feature
+**Include:** `src/views/App.tsx`, `src/lib/types.ts`, `src/lib/api.ts`, `coreApplicationPrompt.md`
+
+### Changing the visual design
+**Include:** `src/styles/global.css`, `src/views/App.tsx`, `apple_design_prompt.md`, `src/components/`
+
+### Modifying API behavior
+**Include:** `api/chat/index.ts`, `src/lib/api.ts`, `src/lib/types.ts`, `api/shared/keyvault.ts`
+
+### Adding new configuration
+**Include:** `package.json`, `vite.config.ts`, `tsconfig.json`, relevant API config files
+
+### Implementing new UI components
+**Include:** `src/components/`, `src/styles/global.css`, `apple_design_prompt.md`, `src/views/App.tsx`
+
+---
+
+## Notes
+- Always follow Apple design principles when making UI changes
+- Maintain TypeScript strict typing throughout
+- Ensure accessibility compliance with all changes
+- Test both light and dark mode themes
+- Verify streaming functionality works correctly
+- Keep security best practices for API key management

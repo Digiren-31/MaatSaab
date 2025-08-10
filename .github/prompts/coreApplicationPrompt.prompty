@@ -1,0 +1,347 @@
+# Web AI Chat App — Apple-style Design (Open/Free) + Minimal Azure Backend
+This document is a detailed, actionable plan for an LLM “Agent mode” to implement a web-based AI chat application that feels native to Apple platforms using open/free resources, with a minimal and secure Azure backend.
+
+References
+- Design guidance: `apple_design_prompt.md` (must be followed)
+- Open/free assets: system font stack, Inter (optional), Lucide icons
+
+---
+
+## 0) Summary
+- Frontend: React + TypeScript + Vite, plain CSS (design tokens) or Tailwind optional.
+- Styling: Apple-like via semantic tokens, system font stack, backdrop blur, subtle motion.
+- Backend (recommended): Azure Static Web Apps + Azure Functions (serverless proxy) + Key Vault + App Insights.
+- Secrets: Only in Azure Key Vault via Managed Identity. Keys never reach the browser.
+- Streaming: Server relays streaming text to browser (fetch + ReadableStream).
+- Accessibility: WCAG AA, keyboard nav, reduced motion, 44x44px targets.
+
+---
+
+## 1) Goals and Non-goals
+Goals
+- Ship a beautiful, responsive, accessible web chat app that adheres to Apple’s design principles in `apple_design_prompt.md`.
+- Use only open/free resources (no SF Pro/SF Symbols bundles).
+- Protect provider API keys using a minimal Azure serverless proxy.
+- Support streaming chat responses, cancel, basic settings, multiple conversations.
+
+Non-goals (v1)
+- Native apps (iOS/macOS). No proprietary fonts or icons.
+- Complex auth, RAG, vector DB, multi-model orchestration.
+- Long-lived WebSockets or private networking (can be added later).
+
+---
+
+## 2) Architecture Overview
+- Client (SPA): React + TypeScript, Vite build, served by Azure Static Web Apps (SWA).
+- API: Azure Functions HTTP endpoints under /api (Node 18).
+- Secrets: Azure Key Vault, accessed by Functions via Managed Identity.
+- Telemetry: Application Insights (no PII, redact prompts/keys).
+- Optional persistence: localStorage/IndexedDB for conversations client-side (v1).
+
+High-level flow
+1) User types a prompt in the browser.
+2) Browser POSTs to /api/chat with messages and model config (no secret).
+3) Azure Function obtains provider key from Key Vault, calls provider with streaming enabled.
+4) Function streams tokens to client; UI updates incrementally.
+
+---
+
+## 3) Frontend Plan (Apple-like, open/free)
+3.1 Stack
+- React 18 + TypeScript + Vite
+- Icons: Lucide (rounded set) or Phosphor (free)
+- Fonts: system font stack with optional Inter from Google Fonts for non-Apple devices
+- State: component state + lightweight context; no heavy state libs
+
+3.2 Design language (per `apple_design_prompt.md`)
+- Clarity, deference, depth
+- System font stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif
+- Colors: semantic tokens (bg, surface, label, secondaryLabel, separator, fill, accent); supports light/dark via prefers-color-scheme
+- Depth: “glass” via backdrop-filter blur/saturate on surfaces; soft shadows; thin separators
+- Spacing: 8px grid; generous whitespace; min 44x44px actionable areas
+- Motion: subtle/short transitions; honor prefers-reduced-motion
+
+3.3 Key screens
+- Conversations (sidebar on desktop; bottom sheet on mobile)
+- Chat (messages list with bubbles, typing indicator, code blocks, markdown)
+- Composer (auto-grow textarea, Send button, Cmd+Enter/Enter behavior)
+- Settings (model selection, temperature, system prompt, theme auto)
+
+3.4 Components
+- ConversationList, ConversationRow
+- ChatView, ChatBubble (user/assistant/system variants)
+- MessageComposer (auto-grow textarea + Send)
+- TypingIndicator (3-dot pulse; reduced-motion fallback)
+- ModelPicker (popover)
+- ErrorBanner / InlineStatus
+- EmptyState
+
+3.5 Accessibility
+- Roles/labels: aria-live="polite" for streaming; alt text; landmarks
+- Keyboard: Tab traversal; Enter/Cmd+Enter to send; Esc to cancel stream
+- Contrast: AA minimum; focus rings visible; motion reduced via media query
+
+3.6 Client storage
+- Conversations in localStorage or IndexedDB (id, title, messages)
+- Settings (model, temperature) persisted client-side
+- No secrets persisted client-side
+
+---
+
+## 4) Backend Plan (Azure, minimal + secure)
+4.1 Recommended: Serverless proxy
+- Azure Static Web Apps (hosts SPA + routes to Functions)
+- Azure Functions (Node 18) HTTP-trigger at /api/chat
+- Reads PROVIDER_API_KEY from Key Vault via Managed Identity
+- Streams tokens (SSE or chunked text) to client
+
+4.2 Alternatives
+- Azure App Service or Container Apps for WebSockets, VNET, custom routing (later)
+- Azure API Management or Front Door for edge WAF, global routing, rate limiting (later)
+
+4.3 API contract
+- Endpoint: POST /api/chat
+- Request:
+  {
+    "messages": [{ "role": "user" | "assistant" | "system", "content": "..." }],
+    "model": "string",
+    "temperature": number,
+    "max_tokens": number
+  }
+- Response: text/event-stream or text/plain (chunked). Each chunk contains the next token(s). Final chunk ends stream. Error chunks contain a JSON error envelope prefixed with "error: ".
+
+4.4 Streaming protocol
+- Preferred: text/event-stream (SSE). Fallback: chunked text/plain.
+- Client: EventSource (SSE) or fetch + ReadableStream for chunked text.
+
+4.5 Rate limiting and quotas (minimal)
+- Per-IP token bucket in-memory at Function scope (best-effort on serverless)
+- Burst and sustained limits configurable via env
+- Optional: move to API Management for durable policies
+
+4.6 Telemetry
+- Application Insights: request metrics, latency, error rate
+- Logs omit prompts and keys; log only event types and durations
+
+---
+
+## 5) Data Model (client-side)
+- Message: { id, role: "user" | "assistant" | "system", content, createdAt }
+- Conversation: { id, title, createdAt, updatedAt, pinned, messages[] }
+- Settings: { modelId, temperature, systemPrompt }
+- No server DB in v1
+
+---
+
+## 6) Security and Privacy
+- Keys only in Key Vault; Functions use Managed Identity to read secrets
+- CORS restrict to SWA hostname and custom domain
+- HTTPS only; HSTS via SWA
+- Sanitize logs; disable query string logging; redact headers
+- Content Security Policy (CSP) in SPA (self plus SWA domain)
+- No analytics by default; opt-in later
+
+---
+
+## 7) Project Structure
+repo/
+- src/ (React app)
+  - components/
+  - views/
+  - styles/ (design tokens, global.css)
+  - lib/ (api client, storage)
+- api/ (Azure Functions)
+  - chat/index.ts (HTTP trigger)
+  - shared/keyvault.ts (secret fetch)
+- public/
+- apple_design_prompt.md
+- AGENT_EXECUTION_PLAN.md
+- package.json, vite.config.ts
+- .github/workflows (SWA CI)
+
+---
+
+## 8) LLM Agent: Operating Guidelines
+- Follow `apple_design_prompt.md` for all UI decisions; keep content-first, minimal chrome, subtle depth.
+- Use only open/free assets. Do not bundle Apple fonts or SF Symbols.
+- Maintain strong typing (TypeScript), exhaustive switch checks for roles.
+- Keep small, iterative PR-sized commits with meaningful messages.
+- Include accessibility checks and keyboard support with each UI feature.
+
+---
+
+## 9) Implementation Tasks (Agent Checklist)
+
+A) Bootstrap
+1. Initialize Vite + React + TypeScript.
+2. Add global CSS with design tokens (light/dark, motion).
+3. Install Lucide icons; add system font stack and optional Inter.
+
+B) Core UI
+4. Implement layout: responsive grid (sidebar + content on desktop; single column on mobile).
+5. Build ConversationList with add/rename/delete/pin.
+6. Build ChatView with bubbles, markdown rendering (remark/rehype), code block styling.
+7. Add TypingIndicator and streaming cursor.
+8. MessageComposer: auto-grow textarea, Enter/Cmd+Enter, disabled when empty.
+
+C) State and Storage
+9. Conversation and message types; React context for active conversation.
+10. localStorage/IndexedDB persistence; debounce saves.
+
+D) API Integration
+11. Create client lib to call /api/chat, stream chunks to UI, handle cancel.
+12. Error handling: network issues, rate limits, provider errors.
+
+E) Settings and Model Picker
+13. Modal/popover for model/temperature/system prompt; persist locally.
+
+F) Accessibility & Polish
+14. aria-live for streaming; focus states; contrast checks; reduced motion.
+15. Hover/active states; soft shadows; separators; glass surfaces.
+
+G) Azure Backend
+16. Create Azure Functions app within SWA; implement /api/chat with streaming.
+17. Integrate Key Vault via Managed Identity; read PROVIDER_API_KEY.
+18. Add rate limiting; add Application Insights logging (no PII).
+
+H) CI/CD and Deployment
+19. Configure SWA deployment from GitHub main branch.
+20. Set environment variables and Key Vault policy; verify end-to-end.
+
+I) QA
+21. Unit tests for streaming parser and UI reducers.
+22. E2E smoke: send prompt, receive stream, cancel, error paths.
+
+---
+
+## 10) API Details (Function)
+Request (POST /api/chat)
+- Headers: Content-Type: application/json
+- Body:
+  {
+    "messages": [{ "role": "system" | "user" | "assistant", "content": "..." }],
+    "model": "gpt-4o-mini",        // or provider model
+    "temperature": 0.7,
+    "max_tokens": 1024
+  }
+
+Response
+- Content-Type: text/event-stream (or text/plain for chunked)
+- Streamed chunks:
+  data: {"delta":"text"}  (SSE)
+- End:
+  data: [DONE]
+- Error:
+  event: error
+  data: {"code":"UPSTREAM_ERROR","message":"..."}
+
+Client behavior
+- Append delta to last assistant message.
+- On error event, show non-blocking banner and allow retry.
+
+---
+
+## 11) Azure Provisioning (zsh, minimal)
+Prereqs
+- az login
+- GitHub repo connected
+
+Commands
+1) Resource group + SWA
+az group create -n rg-maatsaab -l westus2
+az staticwebapp create \
+  -n swa-maatsaab \
+  -g rg-maatsaab \
+  -s https://github.com/Digiren-31/MaatSaab \
+  -l westus2 \
+  --branch main \
+  --login-with-github
+
+2) Key Vault + secret
+az keyvault create -n kv-maatsaab -g rg-maatsaab -l westus2
+az keyvault secret set --vault-name kv-maatsaab -n PROVIDER_API_KEY --value "<provider_key>"
+
+3) Assign Key Vault access to SWA API managed identity
+PID=$(az resource show -g rg-maatsaab -n swa-maatsaab --resource-type "Microsoft.Web/staticSites" --query "identity.principalId" -o tsv)
+az keyvault set-policy -n kv-maatsaab --object-id "$PID" --secret-permissions get list
+
+4) App Insights (optional but recommended)
+az monitor app-insights component create -g rg-maatsaab -l westus2 -a ai-maatsaab
+
+Note
+- The SWA GitHub Action will build the SPA and Functions. Ensure the api/ folder follows SWA conventions.
+
+---
+
+## 12) Dev Setup (local)
+- Node 20+, pnpm or npm
+- Commands:
+  - Scaffold: pnpm create vite maatsaab --template react-ts
+  - Dev: pnpm dev
+  - Lint/format: pnpm dlx @biomejs/biome (or eslint+prettier)
+  - Build: pnpm build
+  - Preview: pnpm preview
+
+Environment
+- VITE_API_BASE defaults to /api in SWA; for local, use SWA emulator or proxy.
+
+---
+
+## 13) Design Tokens (CSS excerpt)
+- Use the following as a base for tokens, light/dark, and surfaces.
+- Ensure min 44px target sizes.
+
+```css
+:root {
+  color-scheme: light dark;
+
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono", Consolas, "Liberation Mono", monospace;
+
+  --bg: 248 248 250;
+  --surface: 255 255 255;
+  --label: 17 17 17;
+  --label-sec: 90 90 92;
+  --separator: 0 0 0 / 0.08;
+  --fill: 118 118 128 / 0.12;
+  --accent: 0 122 255;
+
+  --radius: 12px;
+  --shadow: 0 8px 20px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.06);
+  --blur: 20px;
+  --easing: cubic-bezier(.22,.61,.36,1);
+  --duration: 180ms;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: 20 20 22;
+    --surface: 28 28 30;
+    --label: 242 242 247;
+    --label-sec: 198 198 200;
+    --separator: 255 255 255 / 0.12;
+    --fill: 235 235 245 / 0.16;
+    --accent: 10 132 255;
+    --shadow: 0 10px 24px rgba(0,0,0,0.45), 0 2px 10px rgba(0,0,0,0.35);
+  }
+}
+html, body { height: 100%; background: rgb(var(--bg)); color: rgb(var(--label)); font-family: var(--font-sans); }
+.surface {
+  background: color-mix(in oklab, rgb(var(--surface)) 70%, transparent);
+  backdrop-filter: saturate(180%) blur(var(--blur));
+  -webkit-backdrop-filter: saturate(180%) blur(var(--blur));
+  border: 1px solid rgba(var(--separator));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.input {
+  min-height: 44px; padding: 10px 12px; border-radius: 12px;
+  background: rgba(var(--fill)); border: 1px solid rgba(var(--separator));
+}
+.button {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 14px; border-radius: 10px;
+  background: rgb(var(--accent)); color: white; border: 0;
+  transition: transform var(--duration) var(--easing), filter var(--duration) var(--easing);
+}
+.button:active { transform: translateY(1px); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
