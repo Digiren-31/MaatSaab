@@ -1,6 +1,7 @@
 import base64
 import requests
 import json
+import os
 from typing import List, Dict, Any
 
 class ImageChatAPI:

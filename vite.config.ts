@@ -79,6 +79,9 @@ const devApi = (): Plugin => ({
 export default defineConfig({
   plugins: [react(), devApi()],
   server: {
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    },
     host: true,          // or '0.0.0.0' to listen on all interfaces
     port: 5173,
     strictPort: true,

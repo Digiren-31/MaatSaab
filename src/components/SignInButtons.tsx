@@ -2,14 +2,55 @@ import React from 'react';
 import { useAuth } from '../lib/auth';
 
 export default function SignInButtons() {
+  console.log('🔄 SIGN-IN BUTTON: Component rendered');
   const { signIn } = useAuth();
 
   const handleSignIn = async () => {
+    console.log('==========================================');
+    console.log('🔵 SIGN-IN BUTTON: Sign-in button clicked');
+    console.log('🔵 SIGN-IN BUTTON: Timestamp:', new Date().toISOString());
+    console.log('🔵 SIGN-IN BUTTON: Current URL:', window.location.href);
+    
     try {
+      console.log('🔵 SIGN-IN BUTTON: Starting Google sign-in process...');
+      console.log('🔵 SIGN-IN BUTTON: Calling signIn function...');
+      
       await signIn();
-    } catch (e) {
-      console.error('Google sign-in failed:', e);
-      alert('Sign-in failed. Ensure this domain is authorized in Firebase and try again.');
+      
+      console.log('🟢 SIGN-IN BUTTON: Google sign-in completed successfully!');
+      console.log('🟢 SIGN-IN BUTTON: Sign-in process finished');
+      console.log('==========================================');
+      
+    } catch (e: any) {
+      console.log('==========================================');
+      console.error('🔴 SIGN-IN BUTTON: Google sign-in failed in button handler');
+      console.error('🔴 SIGN-IN BUTTON: Error object:', e);
+      console.error('🔴 SIGN-IN BUTTON: Error message:', e?.message);
+      console.error('🔴 SIGN-IN BUTTON: Error name:', e?.name);
+      console.error('🔴 SIGN-IN BUTTON: Error stack:', e?.stack);
+      
+      // More user-friendly error messages
+      let errorMessage = 'Sign-in failed. ';
+      if (e.message.includes('popup')) {
+        console.error('🔴 SIGN-IN BUTTON: Popup-related error detected');
+        errorMessage += 'Please allow popups and try again.';
+      } else if (e.message.includes('unauthorized-domain')) {
+        console.error('🔴 SIGN-IN BUTTON: Unauthorized domain error detected');
+        errorMessage += 'Domain not authorized. Please add this domain to Firebase Console.';
+      } else if (e.message.includes('network')) {
+        console.error('🔴 SIGN-IN BUTTON: Network error detected');
+        errorMessage += 'Network error. Please check your connection.';
+      } else if (e.message.includes('blocked')) {
+        console.error('🔴 SIGN-IN BUTTON: Blocked popup error detected');
+        errorMessage += 'Please allow popups for this site and try again.';
+      } else {
+        console.error('🔴 SIGN-IN BUTTON: Unknown error type');
+        errorMessage += e.message || 'Please try again.';
+      }
+      
+      console.error('🔴 SIGN-IN BUTTON: Final error message for user:', errorMessage);
+      alert(errorMessage);
+      console.log('==========================================');
     }
   };
 

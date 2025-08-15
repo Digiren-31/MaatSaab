@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Send, Bot, User, Loader2, Menu, X, Sun, Moon, Monitor, Trash2, Square, Paperclip, Image as ImageIcon } from 'lucide-react';
+import { Plus, Send, Bot, User, Loader2, Menu, X, Sun, Moon, Monitor, Trash2, Square, Paperclip, Image as ImageIcon, Settings, LogOut } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { streamChat, encodeImageAsBase64 } from '../lib/api';
 import type { ChatMessage, ImageAttachment } from '../lib/types';
 import chatModes from '../lib/chatModes.json';
 import { useAuth } from '../lib/auth';
 import SignInButtons from '../components/SignInButtons';
+import ProfileSetup from '../components/ProfileSetup';
+import ProfileModal from '../components/ProfileModal';
+import { getEducationLevelLabel, getExaminationById } from '../lib/examinations';
 import {
   createConversation as createConversationCloud,
   sendMessage as sendMessageCloud,
@@ -26,7 +30,7 @@ interface Conversation {
 }
 
 export default function App() {
-  const { user, loading: authLoading, signOutApp } = useAuth();
+  const { user, userProfile, loading: authLoading, signOutApp, updateProfile } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -39,6 +43,8 @@ export default function App() {
   const [sidebarHovered, setSidebarHovered] = useState(false);
   // Mobile top navbar state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileSetupLoading, setProfileSetupLoading] = useState(false);
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('maatsaab-theme');
@@ -321,6 +327,29 @@ export default function App() {
     setAttachedImages(prev => prev.filter(img => img.id !== imageId));
   };
 
+  // Profile handling functions
+  const handleProfileSetupComplete = async (data: { educationLevel: any; targetExaminations: string[]; }) => {
+    try {
+      setProfileSetupLoading(true);
+      await updateProfile(data);
+    } catch (error) {
+      console.error('Failed to complete profile setup:', error);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setProfileSetupLoading(false);
+    }
+  };
+
+  const handleProfileUpdate = async (data: { educationLevel: any; targetExaminations: string[]; }) => {
+    try {
+      await updateProfile(data);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      alert('Failed to update profile. Please try again.');
+      throw error; // Re-throw to prevent modal from closing
+    }
+  };
+
   const onSend = async () => {
     if ((!input.trim() && attachedImages.length === 0) || loading) return;
 
@@ -488,6 +517,32 @@ export default function App() {
   // Close mobile menu when navigating/selecting conversation
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
+  // Show loading spinner while auth is loading
+  if (authLoading) {
+    return (
+      <div className="app loading">
+        <div className="loadingSpinner">
+          <Loader2 size={32} />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Show profile setup for authenticated users without completed profiles
+  if (user && userProfile && !userProfile.profileCompleted) {
+    return (
+      <>
+        <div className="app">
+          <ProfileSetup 
+            onComplete={handleProfileSetupComplete}
+            loading={profileSetupLoading}
+          />
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className={`app ${conversations.length > 0 ? 'has-conversations' : ''} ${sidebarOpen || sidebarHovered ? 'sidebar-open' : ''}`}>
       {/* Backdrop for closing sidebar */}
@@ -636,8 +691,44 @@ export default function App() {
             </div>
             <div className="profileInfo">
               <div className="smallLabel">{user ? 'Signed in' : 'Not signed in'}</div>
-              <div className="smallMuted">{user?.displayName || user?.email || '—'}</div>
+              <div className="smallMuted">
+                {user ? (
+                  <>
+                    {user?.displayName || user?.email || '—'}
+                    {userProfile?.educationLevel && (
+                      <div className="profileDetails">
+                        <span>{getEducationLevelLabel(userProfile.educationLevel)}</span>
+                        {userProfile.targetExaminations.length > 0 && (
+                          <span className="examCount">
+                            {userProfile.targetExaminations.length} target exam{userProfile.targetExaminations.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : '—'}
+              </div>
             </div>
+            {user && userProfile?.profileCompleted && (
+              <div className="profileActions">
+                <button
+                  className="button button-ghost focus-ring"
+                  onClick={() => setProfileModalOpen(true)}
+                  aria-label="Edit profile"
+                  title="Edit profile"
+                >
+                  <Settings size={16} />
+                </button>
+                <button
+                  className="button button-ghost focus-ring"
+                  onClick={signOutApp}
+                  aria-label="Sign out"
+                  title="Sign out"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            )}
           </div>
           {!user && (
             <div className="signinRow">
@@ -677,8 +768,46 @@ export default function App() {
                 </div>
                 <div className="profileInfo">
                   <div className="smallLabel">Signed in</div>
-                  <div className="smallMuted">{user.displayName || user.email}</div>
+                  <div className="smallMuted">
+                    {user.displayName || user.email}
+                    {userProfile?.educationLevel && (
+                      <div className="profileDetails">
+                        <span>{getEducationLevelLabel(userProfile.educationLevel)}</span>
+                        {userProfile.targetExaminations.length > 0 && (
+                          <span className="examCount">
+                            {userProfile.targetExaminations.length} target exam{userProfile.targetExaminations.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
+                {userProfile?.profileCompleted && (
+                  <div className="profileActions">
+                    <button
+                      className="button button-ghost focus-ring"
+                      onClick={() => {
+                        setProfileModalOpen(true);
+                        setMobileMenuOpen(false);
+                      }}
+                      aria-label="Edit profile"
+                      title="Edit profile"
+                    >
+                      <Settings size={16} />
+                    </button>
+                    <button
+                      className="button button-ghost focus-ring"
+                      onClick={() => {
+                        signOutApp();
+                        setMobileMenuOpen(false);
+                      }}
+                      aria-label="Sign out"
+                      title="Sign out"
+                    >
+                      <LogOut size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="signinRow">
@@ -855,6 +984,16 @@ export default function App() {
           )}
         </div>
       </main>
+      
+      {/* Profile Modal */}
+      {user && userProfile && (
+        <ProfileModal
+          isOpen={profileModalOpen}
+          onClose={() => setProfileModalOpen(false)}
+          profile={userProfile}
+          onSave={handleProfileUpdate}
+        />
+      )}
     </div>
   );
 }
@@ -889,6 +1028,7 @@ function MessageItem({ msg }: { msg: ChatMessage }) {
         {msg.role === 'assistant' ? (
           <ReactMarkdown 
             remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
             components={{
               // Custom component overrides for better styling
               code: ({ className, children, ...props }: any) => {
@@ -937,6 +1077,9 @@ function MessageItem({ msg }: { msg: ChatMessage }) {
                 }
                 return <input type={type} checked={checked} {...props} />;
               },
+              // Subscript and superscript support
+              sub: ({ children }) => <sub className="markdownSubscript">{children}</sub>,
+              sup: ({ children }) => <sup className="markdownSuperscript">{children}</sup>,
             }}
           >
             {msg.content || ''}
