@@ -858,7 +858,7 @@ body:has(.chat:not(.empty))::after {
 
 /* Add padding to messages when composer is floating */
 .chat:not(.empty) .messages {
-  padding-bottom: 120px;
+  padding: 16px 40px 100px 40px !important; /* top right bottom left - more space above input */
   height: calc(100vh - 140px); /* Account for chat header and composer space */
   overflow-y: auto;
   box-sizing: border-box;
@@ -905,13 +905,16 @@ body:has(.chat:not(.empty))::after {
 }
 
 @media (min-width: 901px) {
-  .chatHeader {
-    padding: 12px 16px 0 16px;
-    border-bottom: none;
-    background: transparent;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    justify-content: flex-end;
+  /* Hide all top navigation elements in desktop mode */
+  .chatHeader,
+  .chatHeader.topNav,
+  .topNav,
+  .topNavBrand,
+  .topNavLogo,
+  .topNavTitle,
+  .topNavToggle,
+  .topNavNewChat {
+    display: none !important;
   }
 }
 
@@ -1281,6 +1284,56 @@ body:has(.chat:not(.empty))::after {
   font-size: 11px;
   opacity: 0.7;
   font-weight: 500;
+}
+
+/* Message Actions */
+.messageActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+  opacity: 0;
+  transition: opacity var(--duration) var(--easing);
+}
+
+.message:hover .messageActions {
+  opacity: 1;
+}
+
+.messageActionButton {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: none;
+  background: rgba(var(--fill), 0.6);
+  color: rgb(var(--label-sec));
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--duration) var(--easing);
+  position: relative;
+}
+
+.messageActionButton:hover {
+  background: rgba(var(--fill), 0.9);
+  color: rgb(var(--label));
+  transform: translateY(-1px);
+}
+
+.messageActionButton:active {
+  transform: translateY(0);
+}
+
+.messageActionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.copyFeedback {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgb(var(--accent));
 }
 
 /* Mobile adjustments */
@@ -2483,4 +2536,190 @@ body:has(.chat:not(.empty))::after {
 
 .searchContainer svg.searchIcon {
   color: #6366f1; /* Indigo for search */
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  /* Hide the top navigation logo and title on empty state */
+  .chat.empty .topNavLogo,
+  .chat.empty .topNavTitle {
+    display: none;
+  }
+  
+  /* Center the hamburger menu when logo is hidden */
+  .chat.empty .chatHeader.topNav {
+    justify-content: flex-end;
+  }
+  
+  /* Ensure messages and composer are properly centered */
+  .messages {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  
+  /* Preserve bottom padding for floating composer on mobile */
+  .chat:not(.empty) .messages {
+    padding-bottom: 180px !important;
+  }
+  
+  .composer {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+  
+  /* Remove default arrows from select dropdown */
+  .modeSelect {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none;
+    padding-right: 0.75rem;
+  }
+  
+  /* Ensure full width utilization with subtle padding */
+  .message {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  
+  .emptyState {
+    padding: 2rem 1rem;
+  }
+}
+
+/* Additional fix for Safari/iOS select arrows */
+select.modeSelect {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none;
+}
+
+/* Ensure composer is at the bottom and properly aligned */
+.composer.surface {
+  width: 100%;
+  max-width: 48rem; /* Match the desktop max-width */
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .composer.surface {
+    max-width: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}
+
+/* Mobile header adjustments */
+.chatHeader.topNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.5rem; /* Reduced right padding */
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+/* Right-align menu button with less margin */
+.chatHeader.topNav .topNavToggle {
+  margin-left: auto;
+  margin-right: 0; /* Remove right margin */
+}
+
+/* New chat button in mobile header - only visible when in chat mode */
+.chatHeader.topNav .topNavNewChat {
+  display: none;
+}
+
+.chat:not(.empty) .chatHeader.topNav .topNavNewChat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  margin-right: 0.5rem; /* Small gap between new chat and menu button */
+}
+
+/* Ensure proper button spacing on mobile */
+@media (max-width: 768px) {
+  .chatHeader.topNav {
+    padding: 0.75rem 0.25rem 0.75rem 0.75rem; /* Even less right padding */
+  }
+  
+  .chatHeader.topNav .topNavActions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+  }
+}
+
+/* Mobile header specific styles */
+@media (max-width: 768px) {
+  .chatHeader.topNav {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 0.5rem 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  /* Hide logo and title on empty state */
+  .chat.empty .topNavLogo,
+  .chat.empty .topNavTitle {
+    display: none;
+  }
+
+  /* Logo and title container - left aligned */
+  .topNavBrand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .topNavLogo {
+    width: 28px;
+    height: 28px;
+    display: block;
+  }
+
+  /* Remove absolute positioning - place title next to logo */
+  .topNavTitle {
+    position: static;
+    transform: none;
+    font-weight: 600;
+    color: rgb(var(--label));
+    font-size: 16px;
+  }
+
+  /* Spacer to push buttons to the right */
+  .chatHeader.topNav .spacer {
+    flex: 1;
+  }
+
+  /* New chat button styling */
+  .chatHeader.topNav .topNavNewChat {
+    margin-right: 0.25rem; /* Small gap between buttons */
+  }
+
+  /* Menu toggle button - remove right margin */
+  .chatHeader.topNav .topNavToggle {
+    margin-right: 0;
+  }
+
+  /* Both buttons should be visible and properly aligned */
+  .chatHeader.topNav button {
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+  }
 }

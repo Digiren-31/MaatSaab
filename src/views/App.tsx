@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Send, Bot, User, Loader2, Menu, X, Sun, Moon, Monitor, Trash2, Square, Paperclip, Image as ImageIcon, Settings, LogOut } from 'lucide-react';
+import { Plus, Send, Bot, User, Loader2, Menu, X, Sun, Moon, Monitor, Trash2, Square, Paperclip, Image as ImageIcon, Settings, LogOut, Copy, RotateCcw, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -14,6 +14,8 @@ import { getEducationLevelLabel, getExaminationById } from '../lib/examinations'
 import {
   createConversation as createConversationCloud,
   sendMessage as sendMessageCloud,
+  deleteConversation as deleteConversationCloud,
+  renameConversation as renameConversationCloud,
   listenToConversations,
   listenToMessages,
 } from '../lib/chatStore';
@@ -29,6 +31,36 @@ interface Conversation {
   lastMessageAt?: number;
 }
 
+// Utility functions for message actions
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) {
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  }
+};
+
+const downloadAsMarkdownPDF = (content: string, filename: string) => {
+  // Create a blob with the markdown content
+  const blob = new Blob([content], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  
+  // Create a temporary download link
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 export default function App() {
   const { user, userProfile, loading: authLoading, signOutApp, updateProfile } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -38,6 +70,8 @@ export default function App() {
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [abortCtrl, setAbortCtrl] = useState<AbortController | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarHovered, setSidebarHovered] = useState(false);
@@ -277,13 +311,34 @@ export default function App() {
     }
   };
 
-  const deleteConversation = (conversationId: string, e: React.MouseEvent) => {
+  const deleteConversation = async (conversationId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const updatedConversations = conversations.filter(c => c.id !== conversationId);
-    saveConversations(updatedConversations);
-    if (currentConversationId === conversationId) {
-      setCurrentConversationId(null);
-      setMessages([]);
+    
+    // Prevent multiple delete attempts
+    if (deletingConversationId) return;
+    
+    setDeletingConversationId(conversationId);
+    
+    try {
+      // Delete from cloud storage if user is signed in
+      if (user) {
+        await deleteConversationCloud(user.uid, conversationId);
+      }
+      
+      // Update local state
+      const updatedConversations = conversations.filter(c => c.id !== conversationId);
+      saveConversations(updatedConversations);
+      
+      // Clear current conversation if it's the one being deleted
+      if (currentConversationId === conversationId) {
+        setCurrentConversationId(null);
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      alert('Failed to delete conversation. Please try again.');
+    } finally {
+      setDeletingConversationId(null);
     }
   };
 
@@ -351,7 +406,11 @@ export default function App() {
   };
 
   const onSend = async () => {
-    if ((!input.trim() && attachedImages.length === 0) || loading) return;
+    if ((!input.trim() && attachedImages.length === 0) || loading || isSubmitting) return;
+
+    // Prevent multiple rapid submissions
+    setIsSubmitting(true);
+    setLoading(true);
 
     const modePrompt = (chatModes as any)?.modes?.[modeKey]?.prompt?.trim?.() || '';
     const baseContent = input.trim();
@@ -368,6 +427,18 @@ export default function App() {
       createdAt: Date.now()
     };
     const assistantMsg: ChatMessage = { id: crypto.randomUUID(), role: 'assistant', content: '', createdAt: Date.now() };
+
+    // Clear input and images immediately to prevent resubmission
+    setInput('');
+    setAttachedImages([]);
+
+    // Reset textarea height
+    const textareas = document.querySelectorAll('.textarea');
+    textareas.forEach(textarea => {
+      if (textarea instanceof HTMLTextAreaElement) {
+        textarea.style.height = 'auto';
+      }
+    });
 
     // If no current conversation, create one (cloud if signed in)
     let convId = currentConversationId;
@@ -395,28 +466,28 @@ export default function App() {
 
     const newMessages = [...messages, userMsg, assistantMsg];
     setMessages(newMessages);
-    setInput('');
-    setAttachedImages([]);
-
-    const textareas = document.querySelectorAll('.textarea');
-    textareas.forEach(textarea => {
-      if (textarea instanceof HTMLTextAreaElement) {
-        textarea.style.height = 'auto';
-      }
-    });
 
     if (messages.length === 0 && convId) {
+      const newTitle = generateTitle(titleSource);
       const updatedConversations = conversations.map(c => 
         c.id === convId 
-          ? { ...c, title: generateTitle(titleSource), updatedAt: Date.now() }
+          ? { ...c, title: newTitle, updatedAt: Date.now() }
           : c
       );
       saveConversations(updatedConversations);
+      
+      // Also update the title in Firestore if user is signed in
+      if (user) {
+        try {
+          await renameConversationCloud(user.uid, convId, newTitle);
+        } catch (e) {
+          console.error('Failed to update conversation title in Firestore:', e);
+        }
+      }
     }
 
     const ctrl = new AbortController();
     setAbortCtrl(ctrl);
-    setLoading(true);
 
     let assistantText = '';
 
@@ -442,15 +513,47 @@ export default function App() {
       }
     } catch (e) {
       console.error(e);
+      // If there's an error, restore the input and images
+      if (ctrl.signal.aborted) {
+        // User cancelled, don't restore
+        return;
+      }
+      setInput(baseContent);
+      setAttachedImages(capturedImages);
     } finally {
       setLoading(false);
       setAbortCtrl(null);
+      setIsSubmitting(false);
     }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() && attachedImages.length === 0) return;
+    if (loading || isSubmitting) return;
+    
+    // Call the actual send function
+    await onSend();
+  };
+
+  const handleRestart = (content: string) => {
+    // Set the input to the content and trigger send
+    setInput(content);
+    // Clear any attached images for restart
+    setAttachedImages([]);
+    // We'll trigger the send on the next render cycle
+    setTimeout(() => onSend(), 0);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    handleSend();
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      // Prevent double submission if already loading
+      if (loading || isSubmitting) return;
       onSend();
     }
     if (e.key === 'Escape') {
@@ -490,7 +593,17 @@ export default function App() {
             try {
               const parsed: Conversation[] = JSON.parse(saved);
               for (const conv of parsed) {
-                const convId = await createConversationCloud(user.uid, conv.title || 'New Chat');
+                // Use the first message content as title if available, otherwise use the existing title
+                let convTitle = conv.title;
+                if (convTitle === 'New Chat' || !convTitle) {
+                  const firstUserMessage = conv.messages.find(m => m.role === 'user');
+                  if (firstUserMessage) {
+                    convTitle = generateTitle(firstUserMessage.content);
+                  } else {
+                    convTitle = 'Untitled Chat';
+                  }
+                }
+                const convId = await createConversationCloud(user.uid, convTitle);
                 for (const m of conv.messages) {
                   const attachments = (m as any).images && (m as any).images.length > 0 ? (m as any).images : undefined;
                   await sendMessageCloud(user.uid, convId, m.role === 'assistant' ? 'assistant' : 'user', m.content, attachments);
@@ -670,9 +783,14 @@ export default function App() {
                     className="button button-ghost conversationDelete"
                     aria-label="Delete conversation"
                     title="Delete conversation"
+                    disabled={deletingConversationId === conversation.id}
                     onClick={(e) => deleteConversation(conversation.id, e)}
                   >
-                    <Trash2 size={14} />
+                    {deletingConversationId === conversation.id ? (
+                      <Loader2 className="animate-spin" size={14} />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
                   </button>
                 </div>
               ))}
@@ -742,11 +860,28 @@ export default function App() {
       <main className={`chat ${!hasMessages ? 'empty' : ''}`}>
         {/* Top mobile navbar */}
         <div className={`chatHeader topNav ${mobileMenuOpen ? 'open' : ''}`}>
-          {/* Logo directly (no button wrapper) */}
-          <img src="/favicon.svg" alt="MaatSaab" className="topNavLogo" />
-          {/* Centered title on mobile */}
-          <div className="topNavTitle">MaatSaab</div>
+          {/* Logo and title together on the left when there are messages */}
+          {hasMessages && (
+            <div className="topNavBrand">
+              <img src="/favicon.svg" alt="MaatSaab" className="topNavLogo" />
+              <div className="topNavTitle">MaatSaab</div>
+            </div>
+          )}
           <div className="spacer"></div>
+          
+          {/* New chat button - only visible when in chat mode (hasMessages) */}
+          {hasMessages && (
+            <button 
+              className="button button-ghost focus-ring topNavNewChat" 
+              aria-label="New chat" 
+              title="New chat" 
+              onClick={createNewConversation}
+            >
+              <Plus size={18} />
+            </button>
+          )}
+          
+          {/* Menu button */}
           <button 
             className="button button-ghost focus-ring topNavToggle" 
             aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -859,9 +994,14 @@ export default function App() {
                       className="button button-ghost conversationDelete"
                       aria-label="Delete conversation"
                       title="Delete conversation"
+                      disabled={deletingConversationId === conversation.id}
                       onClick={(e) => deleteConversation(conversation.id, e)}
                     >
-                      <Trash2 size={14} />
+                      {deletingConversationId === conversation.id ? (
+                        <Loader2 className="animate-spin" size={14} />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
                     </button>
                   </div>
                 ))}
@@ -884,9 +1024,19 @@ export default function App() {
         )}
 
         <div ref={listRef} className="messages" role="log" aria-live="polite" aria-relevant="additions text">
-          {messages.map((m) => (
-            <MessageItem key={m.id} msg={m} />
-          ))}
+          {messages.map((m) => {
+            const currentConversation = conversations.find(c => c.id === currentConversationId);
+            const conversationTitle = currentConversation?.title || 'New Chat';
+            return (
+              <MessageItem 
+                key={m.id} 
+                msg={m} 
+                currentMode={modeKey}
+                conversationTitle={conversationTitle}
+                onRestart={handleRestart}
+              />
+            );
+          })}
           {loading && (
             <div className="message assistant" aria-label="maat saab typing">
               <Loader2 className="spin" size={16} />
@@ -910,6 +1060,10 @@ export default function App() {
                 <button 
                   className="button button-stop focus-ring" 
                   onClick={() => abortCtrl?.abort()} 
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    abortCtrl?.abort();
+                  }}
                   aria-label="Stop generation"
                   title="Stop generation"
                 >
@@ -917,13 +1071,17 @@ export default function App() {
                 </button>
               ) : (
                 <button 
-                  className="button focus-ring" 
-                  onClick={onSend} 
-                  disabled={!input.trim() && attachedImages.length === 0}
+                  className="button button-primary focus-ring sendBtn"
+                  onClick={handleSend}
+                  disabled={loading || isSubmitting || (!input.trim() && attachedImages.length === 0)}
                   aria-label="Send message"
-                  title="Send message"
+                  type="button"
                 >
-                  <Send size={16} /> <span className="btnLabel">Send</span>
+                  {loading ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : (
+                    <Send size={18} />
+                  )}
                 </button>
               )}
             </div>
@@ -998,9 +1156,36 @@ export default function App() {
   );
 }
 
-function MessageItem({ msg }: { msg: ChatMessage }) {
+function MessageItem({ 
+  msg, 
+  currentMode, 
+  conversationTitle, 
+  onRestart 
+}: { 
+  msg: ChatMessage; 
+  currentMode: string;
+  conversationTitle: string;
+  onRestart: (content: string) => void;
+}) {
+  const [showCopied, setShowCopied] = React.useState(false);
   const Icon = msg.role === 'user' ? User : Bot;
   const roleLabel = msg.role === 'assistant' ? 'maat saab' : 'you';
+
+  const handleCopy = async () => {
+    await copyToClipboard(msg.content);
+    setShowCopied(true);
+    setTimeout(() => setShowCopied(false), 2000);
+  };
+
+  const handleRestart = () => {
+    onRestart(msg.content);
+  };
+
+  const handleDownload = () => {
+    const filename = conversationTitle.replace(/[^a-zA-Z0-9]/g, '_') || 'notes';
+    downloadAsMarkdownPDF(msg.content, filename);
+  };
+
   return (
     <div className={`message ${msg.role}`}>
       <div className="metaRow">
@@ -1086,6 +1271,44 @@ function MessageItem({ msg }: { msg: ChatMessage }) {
           </ReactMarkdown>
         ) : (
           <div className="userMessage">{msg.content}</div>
+        )}
+
+        {/* Action icons - only for non-empty messages */}
+        {msg.content && (
+          <div className="messageActions">
+            {/* Copy icon */}
+            <button
+              onClick={handleCopy}
+              className="messageActionButton"
+              title={showCopied ? 'Copied!' : 'Copy content'}
+              disabled={showCopied}
+            >
+              <Copy size={14} />
+              {showCopied && <span className="copyFeedback">Copied!</span>}
+            </button>
+
+            {/* Restart icon - only for user messages */}
+            {msg.role === 'user' && (
+              <button
+                onClick={handleRestart}
+                className="messageActionButton"
+                title="Send this message again"
+              >
+                <RotateCcw size={14} />
+              </button>
+            )}
+
+            {/* Download icon - only for assistant messages in Notes mode */}
+            {msg.role === 'assistant' && currentMode === 'notes' && (
+              <button
+                onClick={handleDownload}
+                className="messageActionButton"
+                title="Download as Markdown file"
+              >
+                <Download size={14} />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
